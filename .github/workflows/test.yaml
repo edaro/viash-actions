@@ -28,6 +28,12 @@ on:
           Default: 14gb.
         required: false
         default: "14gb"
+    secrets:
+      LAMIN_API_KEY:
+        description: |
+          API key for LaminDB, only needed if the project's test resources
+          are stored in a private LaminDB instance.
+        required: false
 
 permissions:
   contents: read
@@ -54,6 +60,8 @@ jobs:
 
     - uses: edaro/viash-actions/project/sync-and-cache@v7
       id: cache
+      env:
+        LAMIN_API_KEY: ${{ secrets.LAMIN_API_KEY }}
       with:
         project_directory: ${{ inputs.project_directory }}
 
