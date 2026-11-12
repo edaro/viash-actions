@@ -1,4 +1,4 @@
-# viash-actions unreleased
+# viash-actions v7.0.0
 
 ## Breaking changes
 
