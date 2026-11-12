@@ -72,16 +72,16 @@ runs:
         printf "%s\n" "${NEXTFLOW_PARAMS[@]}"
         echo
         
-        VIASH_VERSION=$(viash -v | grep -oP 'viash \K[0-9.]+')
-        IFS=. read -r major minor _ <<< "$VIASH_VERSION"
+        viash_version=$(viash -v | grep -oP 'viash \K[0-9.]+')
+        IFS=. read -r major minor _ <<< "$viash_version"
         JOINED_CONFIGS=$(IFS=';'; printf '%s' "${BUILT_CONFIGS[*]}")
         JOINED_PARAMS=$(IFS=';'; printf '%s' "${NEXTFLOW_PARAMS[*]}")
         if (( "$major" > 0 )) || (( "$minor" >= 9 )); then
-          VIASH_VERSION_LONG=$(viash -v | grep -oP 'viash \K[0-9.]+.\w+')
+          viash_version_long=$(viash -v | grep -oP 'viash \K[0-9.]+.\w+')
           viash_tools/target/docker/nextflow/generate_params_v9/generate_params_v9 \
           --input "$JOINED_CONFIGS" \
           --output "$JOINED_PARAMS" \
-          --viash_version "$VIASH_VERSION_LONG"
+          --viash_version "$viash_version_long"
         else
           viash_tools/target/docker/nextflow/generate_params/generate_params \
           --input "$JOINED_CONFIGS" \

@@ -59,10 +59,10 @@ runs:
         TARGET_DIR=$(yq -r '.target // "target"' _viash.yaml)
         echo "target_dir=$TARGET_DIR" >> "$GITHUB_OUTPUT"
 
-        VIASH_VERSION=$(viash -v | grep -oP 'viash \K[0-9.]+')
+        viash_version=$(viash -v | grep -oP 'viash \K[0-9.]+')
         if [[ -z "$IMAGE_TAG" ]]; then
           CONFIG_MOD=""
-        elif [ "$(printf '%s\n' "0.9.0" "$VIASH_VERSION" | sort -V | head -n1)" == "0.9.0" ]; then
+        elif [ "$(printf '%s\n' "0.9.0" "$viash_version" | sort -V | head -n1)" == "0.9.0" ]; then
           CONFIG_MOD=".platforms[.type == \"docker\"].target_tag := \"$IMAGE_TAG\""
         else
           CONFIG_MOD=".engines[.type == \"docker\"].target_tag := \"$IMAGE_TAG\""
