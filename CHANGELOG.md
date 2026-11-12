@@ -15,6 +15,10 @@
 
 * `project/sync-and-cache`: Add a `cache_hit` output (PR edaro/viash-actions#1).
 
+* `project/sync-and-cache`: Add support for LaminDB artifacts and collections as test resources, e.g. `path: lamin://<owner>/<instance>/collection/<uid>` (PR edaro/viash-actions#2).
+
+* `.github/workflows/test.yaml`: Add an optional `LAMIN_API_KEY` secret for test resources stored in a private LaminDB instance (PR edaro/viash-actions#2).
+
 ## Minor changes
 
 * All actions and reusable workflows: Pass expressions to `run:` scripts via `env:` instead of interpolating `${{ ... }}` directly, to prevent script injection (PR edaro/viash-actions#1).

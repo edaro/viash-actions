@@ -18,6 +18,17 @@ jobs:
     uses: edaro/viash-actions/.github/workflows/test.yaml@v7
 ```
 
+If the project’s test resources are stored in a private LaminDB
+instance, pass a LaminDB API key:
+
+``` {yaml}
+jobs:
+  test:
+    uses: edaro/viash-actions/.github/workflows/test.yaml@v7
+    secrets:
+      LAMIN_API_KEY: ${{ secrets.LAMIN_API_KEY }}
+```
+
 ## Build components
 
 ``` {yaml}

@@ -2,7 +2,7 @@ name: Sync and cache test resources specified by the project config
 author: Data Intuitive
 description: |
   Sync and cache test resources. This action will sync test resources from
-  different sources (e.g. s3, gs) and cache them for later use. The cache key is
+  different sources (e.g. s3, gs, LaminDB) and cache them for later use. The cache key is
   based on the hash of the test resources. For this action to work, the Viash
   project config should contain a list of test resources to sync.
 
@@ -10,7 +10,11 @@ description: |
 
     - `s3`: Syncs resources from an S3 bucket.
     - `gs`: Syncs resources from a Google Cloud Storage bucket.
+    - `lamin`: Syncs an artifact or the artifacts of a collection from a LaminDB instance.
     - Create a GitHub issue if you need support for other storage types.
+
+  The type is inferred from the path if not specified. After syncing, files under
+  `dest` that do not belong to the resource are removed.
 
   Example:
 
@@ -23,7 +27,26 @@ description: |
       - type: gs
         path: gs://my-bucket/my-other-folder
         dest: my-other-folder
+      - type: lamin
+        path: lamin://my-org/my-instance/collection/abcdEFGH12345678
+        dest: resources_test
+      - path: lamin://my-org/my-instance/artifact/abcdEFGH123456780000
+        dest: resources_test/common/pancreas/dataset.anndata.zarr
   ```
+
+  LaminDB resources:
+
+    - `path` has the form `lamin://<owner>/<instance>/artifact/<uid>` or
+      `lamin://<owner>/<instance>/collection/<uid>`. A 20-character uid pins an exact
+      version, a 16-character stem uid resolves to the latest version.
+    - An artifact (a file or a folder) is downloaded to exactly `dest`.
+    - Each artifact of a collection is downloaded to `<dest>/<key>`. Use the optional field
+      `strip_prefix` to remove a prefix from the start of each key.
+    - The cache key is derived from the uids and hashes of the resolved artifacts and
+      collections, so it changes exactly when their content changes.
+    - Public instances are read anonymously. For private instances, set the `LAMIN_API_KEY`
+      environment variable.
+    - Requires [uv](https://docs.astral.sh/uv/), which is installed by this action if needed.
 inputs:
   project_directory:
     required: false
@@ -68,6 +91,14 @@ runs:
 
         test_resources=$(yq e "$yq_script" "_viash.yaml")
 
+        # write the test resources as json, for lamin_sync.py
+        work_dir=$(mktemp -d "$RUNNER_TEMP/sync_and_cache.XXXXXX")
+        yq -o=json '.info.test_resources | map(.type = .type // (.path | sub("://.*", "")))' "_viash.yaml" \
+          > "$work_dir/test_resources.json"
+        has_lamin=$(jq 'any(.[]; .type == "lamin")' "$work_dir/test_resources.json")
+        echo "work_dir=$work_dir" >> "$GITHUB_OUTPUT"
+        echo "has_lamin=$has_lamin" >> "$GITHUB_OUTPUT"
+
         # fetch the test resource destination paths
         # todo: convert to absolute paths
         dest_paths=$(
@@ -84,6 +115,12 @@ runs:
         EOF
         HERE
 
+    - name: Set up uv
+      if: ${{ steps.test_resources.outputs.has_lamin == 'true' }}
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      with:
+        enable-cache: false
+
     # create cache_key key
     # this is the combined hash of all of the files across the different test resource sources
     - name: Create hash key
@@ -93,10 +130,21 @@ runs:
       env:
         TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
         CACHE_KEY_PREFIX: ${{ inputs.cache_key_prefix }}
+        WORK_DIR: ${{ steps.test_resources.outputs.work_dir }}
+        HAS_LAMIN: ${{ steps.test_resources.outputs.has_lamin }}
       run: |
         if [ -z "$TEST_RESOURCES" ]; then
           echo "cache_key=" >> "$GITHUB_OUTPUT"
           exit 0
+        fi
+
+        # resolve lamin uids and hashes once, the sync step reuses the manifest
+        lamin_manifest="$WORK_DIR/lamin_manifest.json"
+        if [ "$HAS_LAMIN" == "true" ]; then
+          LAMIN_CACHE_DIR="$WORK_DIR/lamin_cache" \
+            uv run --script "$GITHUB_ACTION_PATH/lamin_sync.py" resolve \
+            --resources "$WORK_DIR/test_resources.json" \
+            --manifest "$lamin_manifest"
         fi
 
         function s3_ls() {
@@ -113,6 +161,7 @@ runs:
         }
 
         ls_content=$(
+          index=0
           echo "$TEST_RESOURCES" | \
             while read -r line; do
               type=$(echo "$line" | yq e '.type')
@@ -126,12 +175,17 @@ runs:
                 s3_ls "$path"
               elif [ "$type" == "gs" ]; then
                 gs_ls "$path"
+              elif [ "$type" == "lamin" ]; then
+                jq -r --argjson index "$index" \
+                  '.resources[] | select(.index == $index) | .key_lines[]' \
+                  "$lamin_manifest" || exit 1
               else
                 echo "Unsupported storage type: '$type' for bucket '$path'."
                 exit 1
               fi
 
               echo ""
+              index=$((index + 1))
             done
         )
 
@@ -178,6 +232,9 @@ runs:
       working-directory: ${{ inputs.project_directory }}
       env:
         TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
+        WORK_DIR: ${{ steps.test_resources.outputs.work_dir }}
+        HAS_LAMIN: ${{ steps.test_resources.outputs.has_lamin }}
+        CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
       run: |
         function sync_s3() {
           local s3_path="$1"
@@ -205,6 +262,11 @@ runs:
             path=$(echo "$line" | yq e '.path')
             dest=$(echo "$line" | yq e '.dest')
 
+            # lamin resources are synced below, after s3 and gs
+            if [ "$type" == "lamin" ]; then
+              continue
+            fi
+
             echo "Syncing '$path' to '$dest'..."
 
             if [ "$type" == "s3" ]; then
@@ -216,6 +278,19 @@ runs:
               exit 1
             fi
           done
+
+        if [ "$HAS_LAMIN" == "true" ]; then
+          lamin_args=()
+          if [ "$CACHE_HIT" == "true" ]; then
+            lamin_args+=(--cache-hit)
+          fi
+          # downloads are moved from the lamin cache into the destinations
+          LAMIN_CACHE_DIR="$WORK_DIR/lamin_cache" \
+            uv run --script "$GITHUB_ACTION_PATH/lamin_sync.py" sync \
+            --manifest "$WORK_DIR/lamin_manifest.json" \
+            "${lamin_args[@]}"
+          rm -rf "$WORK_DIR/lamin_cache"
+        fi
 
     - name: List resources
       shell: bash
@@ -234,7 +309,11 @@ runs:
             echo "type: $type"
             echo "path: $path"
             echo "dest: $dest"
-            tree "$dest" -L 3
+            if [ -d "$dest" ]; then
+              tree "$dest" -L 3
+            else
+              ls -l "$dest"
+            fi
             echo ""
             echo "===================================="
           done

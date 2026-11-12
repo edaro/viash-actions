@@ -1,0 +1,18 @@
+# Fixture for .github/workflows/test-sync-and-cache.yaml
+name: fixture_lamin
+info:
+  test_resources:
+    # a collection, resolved to its latest version (16-character stem uid)
+    - path: lamin://laminlabs/lamindata/collection/2wUs6V1OuGzp5Ll4
+      dest: resources_test
+      strip_prefix: fasta/
+    # a file artifact, pinned to an exact version (20-character uid)
+    - type: lamin
+      path: lamin://laminlabs/lamindata/artifact/s3rtK8wIzJNKvg5Q0000
+      dest: resources_test/random/randomfile.txt
+    # a folder artifact, resolved to its latest version
+    - path: lamin://laminlabs/lamindata/artifact/2r8SFCH8TlydF0xn
+      dest: resources_test/iris/study1_raw_images
+    # an s3 resource nested inside the collection's dest
+    - path: s3://lamindata/fasta/
+      dest: resources_test/s3/fasta

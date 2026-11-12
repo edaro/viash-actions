@@ -21,13 +21,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture: [s3]
+        fixture: [s3, lamin]
     steps:
       - uses: actions/checkout@v7
 
       - name: Sync and cache
         id: sync
         uses: ./project/sync-and-cache
+        # an unset secret is an empty string, which must result in anonymous access
+        env:
+          LAMIN_API_KEY: ${{ secrets.LAMIN_API_KEY }}
         with:
           project_directory: .github/fixtures/${{ matrix.fixture }}
           cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__
@@ -57,13 +60,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture: [s3]
+        fixture: [s3, lamin]
     steps:
       - uses: actions/checkout@v7
 
       - name: Sync and cache
         id: sync
         uses: ./project/sync-and-cache
+        # an unset secret is an empty string, which must result in anonymous access
+        env:
+          LAMIN_API_KEY: ${{ secrets.LAMIN_API_KEY }}
         with:
           project_directory: .github/fixtures/${{ matrix.fixture }}
           cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__
@@ -97,6 +103,9 @@ jobs:
       - name: Sync again
         id: resync
         uses: ./project/sync-and-cache
+        # an unset secret is an empty string, which must result in anonymous access
+        env:
+          LAMIN_API_KEY: ${{ secrets.LAMIN_API_KEY }}
         with:
           project_directory: .github/fixtures/${{ matrix.fixture }}
           cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__resync__
