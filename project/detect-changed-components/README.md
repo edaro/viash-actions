@@ -55,16 +55,16 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - id: ns_list
-        uses: viash-io/viash-actions/ns-list@v6
+        uses: edaro/viash-actions/ns-list@v7
         with:
           format: json  
 
       - name: Detect components with changed files
         id: ns_list_changed
-        uses: viash-io/viash-actions/detect-changed-components@v6
+        uses: edaro/viash-actions/project/detect-changed-components@v7
         with:
           input_file: ${{ steps.ns_list.outputs.output_file }}
 ```

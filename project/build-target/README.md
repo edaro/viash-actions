@@ -44,11 +44,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: viash-io/viash-actions/setup@v6
+        uses: edaro/viash-actions/setup@v7
 
       - name: Build target directory
         id: build_target
-        uses: viash-io/viash-actions/build-target@v6
+        uses: edaro/viash-actions/project/build-target@v7
 
       - name: Check output
         run: |

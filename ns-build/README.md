@@ -77,11 +77,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Install Viash
-        uses: viash-io/viash-actions/setup@v6
+        uses: edaro/viash-actions/setup@v7
 
       - name: viash ns build
-        uses: viash-io/viash-actions/ns-build@v6
+        uses: edaro/viash-actions/ns-build@v7
 ```

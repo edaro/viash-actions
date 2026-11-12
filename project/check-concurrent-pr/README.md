@@ -39,10 +39,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Check for concurrent PRs
-        uses: viash-io/viash-actions/is-pr@v6
+        uses: edaro/viash-actions/project/check-concurrent-pr@v7
         id: is_pr
         
       - run: |

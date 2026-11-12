@@ -33,7 +33,7 @@ Pro](https://www.data-intuitive.com/services/viashpro.html) actions:
 3.  [`pro/generate-documentation-qmd`](pro/generate-documentation-qmd) -
     Build quarto markdown documentation files for Viash components
 
-We recommend using `v6` for your actions.
+We recommend using `v7` for your actions.
 
 ## Release Management
 
@@ -46,8 +46,8 @@ actions](https://docs.github.com/en/actions/creating-actions/about-custom-action
 - Major versions (such as `v1`) will always point to the last minor or
   patch release for this major version. (when `v1.0.2` is out, `v1` will
   point to this update to). This means using
-  `viash-io/viash-actions/setup@v1` in your workflow file will
+  `edaro/viash-actions/setup@v1` in your workflow file will
   automatically get the updated versions. Using
-  `viash-io/viash-actions/setup@v1.0.2` will pin a specific release.
+  `edaro/viash-actions/setup@v1.0.2` will pin a specific release.
 - Major version changes (`v1` to `v2`) will often come with breaking
   changes, and workflows might require manual updates.

@@ -34,19 +34,19 @@ jobs:
   viash-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: viash-io/viash-actions/setup@v6
+      - uses: edaro/viash-actions/setup@v7
       - run: |
           viash --version
   viash-windows:
     runs-on: windows-latest
     steps:
-      - uses: viash-io/viash-actions/setup@v6
+      - uses: edaro/viash-actions/setup@v7
       - run: |
           viash --version
   viash-macos:
     runs-on: macos-latest
     steps:
-      - uses: viash-io/viash-actions/setup@v6
+      - uses: edaro/viash-actions/setup@v7
       - run: |
           viash --version
 ```

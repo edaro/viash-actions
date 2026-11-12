@@ -46,6 +46,9 @@ info:
   resources are detected, this will be an empty string.
 - `dest_paths`: Paths to the synced resources. If no test resources are
   detected, this will be an empty string.
+- `cache_hit`: Whether the cache was restored from an exact match of
+  `cache_key` (`'true'` or `'false'`). Empty if no test resources are
+  detected.
 
 ## Examples
 
@@ -61,8 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Sync and cache test resources specified by the project config
-        uses: viash-io/viash-actions/sync-and-cache
+        uses: edaro/viash-actions/project/sync-and-cache@v7
 ```

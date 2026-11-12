@@ -15,7 +15,7 @@ on:
 
 jobs:
   test:
-    uses: viash-io/viash-actions/.github/workflows/test.yaml@v6
+    uses: edaro/viash-actions/.github/workflows/test.yaml@v7
 ```
 
 ## Build components
@@ -49,5 +49,5 @@ on:
 
 jobs:
   test:
-    uses: viash-io/viash-actions/.github/workflows/build.yaml@v6
+    uses: edaro/viash-actions/.github/workflows/build.yaml@v7
 ```

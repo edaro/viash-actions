@@ -16,7 +16,7 @@ jinja template to generate qmd files. This component requires Viash to
 be installed and available in `$PATH`.
 
 We recommend to use
-[viash-actions/setup](https://github.com/viash-io/viash-actions/tree/main/setup)
+[viash-actions/setup](https://github.com/edaro/viash-actions/tree/main/setup)
 before you run `generate_documentation_qmd`.
 
 ### Inputs available
@@ -66,15 +66,15 @@ jobs:
     
     steps:
     - name: Install Viash
-      uses: viash-io/viash-actions/setup@v6
+      uses: edaro/viash-actions/setup@v7
 
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
       with:
         path: project
 
     - name: Build quarto markdown documentation files for Viash components
-      uses: viash-io/viash-actions/generate-documentation-qmd@v6
+      uses: edaro/viash-actions/pro/generate-documentation-qmd@v7
       with:
         project_dir: project
         src: src

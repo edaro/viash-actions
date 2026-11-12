@@ -7,8 +7,8 @@ format: gfm
 #| include: false
 library(tidyverse)
 
-repo_name <- "viash-io/viash-actions"
-latest_stable_version <- "v6"
+repo_name <- "edaro/viash-actions"
+latest_stable_version <- "v7"
 
 actions <- tibble(
   file = list.files(".", full.names = TRUE, recursive = TRUE, pattern = "action.yml"),
@@ -50,5 +50,5 @@ This repository uses [GitHub's recommended release management for actions](https
 
 * GitHub releases with tags are used for updates on the actions. 
 * Semantic versioning is used, with major, minor and possibly patch release. 
-* Major versions (such as `v1`) will always point to the last minor or patch release for this major version. (when `v1.0.2` is out, `v1` will point to this update to). This means using `viash-io/viash-actions/setup@v1` in your workflow file will automatically get the updated versions. Using `viash-io/viash-actions/setup@v1.0.2` will pin a specific release.
+* Major versions (such as `v1`) will always point to the last minor or patch release for this major version. (when `v1.0.2` is out, `v1` will point to this update to). This means using `edaro/viash-actions/setup@v1` in your workflow file will automatically get the updated versions. Using `edaro/viash-actions/setup@v1.0.2` will pin a specific release.
 * Major version changes (`v1` to `v2`) will often come with breaking changes, and workflows might require manual updates.
