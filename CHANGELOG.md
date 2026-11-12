@@ -29,6 +29,8 @@
 
 * Add CI for this repository: `actionlint` for the workflows, `shellcheck` for the scripts in the composite actions, and a workflow that tests `project/sync-and-cache` against fixture projects (PR edaro/viash-actions#1).
 
+* Add CI that runs `setup` with and without a `version` input (PR edaro/viash-actions#3).
+
 ## Bug fixes
 
 * `project/sync-and-cache`: Add `--delete` flag to sync commands so files removed from the remote source are also removed locally (PR #56).
@@ -46,6 +48,8 @@
 * `project/update-docker-engine`: Fix quoting of the apt source line (PR edaro/viash-actions#1).
 
 * Fix the action paths in the README examples, e.g. `project/sync-and-cache` instead of `sync-and-cache` (PR edaro/viash-actions#1).
+
+* `setup`, `project/build-target`, `pro/build-nextflow-params`, `pro/build-nextflow-schemas`: Don't use environment variables that Viash reads, such as `VIASH_VERSION`; `setup` failed without a `version` input (PR edaro/viash-actions#3).
 
 # viash-actions v6.7.3
 
