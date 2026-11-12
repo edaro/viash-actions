@@ -24,28 +24,30 @@ runs:
       run: |
         # if the branch is the default branch, always run
         if [[ "$GITHUB_REF_NAME" == "$GITHUB_DEFAULT_BRANCH" ]]; then
-          echo "run=true" >> $GITHUB_OUTPUT
+          echo "run=true" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
         # if the event is not a push event, always run
-        if [[ "${{ github.event_name == 'push' }}" == "false" ]]; then
-          echo "run=true" >> $GITHUB_OUTPUT
+        if [[ "$GITHUB_EVENT_NAME" != "push" ]]; then
+          echo "run=true" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
         # if the commit message contains 'ci force', always run
-        if [[ "${{ contains(github.event.head_commit.message, 'ci force') }}" == "true" ]]; then
-          echo "run=true" >> $GITHUB_OUTPUT
+        if [[ "$HEAD_COMMIT_MESSAGE" == *"ci force"* ]]; then
+          echo "run=true" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
         # if a PR exists for the branch, do not run
-        pull_request=$(gh pr list -R ${{ github.repository }} -H ${{ github.ref_name }} --json url --state open --limit 1 | jq '.[0].url')
+        pull_request=$(gh pr list -R "$GITHUB_REPOSITORY" -H "$GITHUB_REF_NAME" --json url --state open --limit 1 | jq '.[0].url')
         if [[ "$pull_request" == "null" ]]; then
-          echo "run=true" >> $GITHUB_OUTPUT
+          echo "run=true" >> "$GITHUB_OUTPUT"
         else
-          echo "run=false" >> $GITHUB_OUTPUT
+          echo "run=false" >> "$GITHUB_OUTPUT"
         fi
       env:
         GH_TOKEN: ${{ inputs.github_token }}
+        GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}

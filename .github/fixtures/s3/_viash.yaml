@@ -1,0 +1,7 @@
+# Fixture for .github/workflows/test-sync-and-cache.yaml
+name: fixture_s3
+info:
+  test_resources:
+    - type: s3
+      path: s3://lamindata/fasta/
+      dest: resources_test/fasta

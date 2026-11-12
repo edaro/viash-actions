@@ -39,6 +39,9 @@ outputs:
   dest_paths:
     description: Paths to the synced resources. If no test resources are detected, this will be an empty string.
     value: ${{ steps.test_resources.outputs.dest_paths }}
+  cache_hit:
+    description: "`'true'` if the cache was restored from an exact match of `cache_key`, `'false'` otherwise."
+    value: ${{ steps.cache.outputs.cache-hit == 'true' }}
 runs:
   using: 'composite'
   steps:
@@ -50,7 +53,7 @@ runs:
         resources_detected=$(yq e '.info | has("test_resources")' "_viash.yaml")
         if [ "$resources_detected" == "false" ]; then
           echo "No test resources detected."
-          echo "dest_paths=" >> $GITHUB_OUTPUT
+          echo "dest_paths=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
@@ -72,7 +75,7 @@ runs:
         )
 
         # output multiline string
-        cat >> $GITHUB_OUTPUT <<HERE
+        cat >> "$GITHUB_OUTPUT" <<HERE
         test_resources<<EOF
         $test_resources
         EOF
@@ -87,9 +90,12 @@ runs:
       shell: bash
       id: cache_key
       working-directory: ${{ inputs.project_directory }}
+      env:
+        TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
+        CACHE_KEY_PREFIX: ${{ inputs.cache_key_prefix }}
       run: |
-        if [ -z "${{ steps.test_resources.outputs.test_resources }}" ]; then
-          echo "cache_key=" >> $GITHUB_OUTPUT
+        if [ -z "$TEST_RESOURCES" ]; then
+          echo "cache_key=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
@@ -107,7 +113,7 @@ runs:
         }
 
         ls_content=$(
-          echo "${{ steps.test_resources.outputs.test_resources }}" | \
+          echo "$TEST_RESOURCES" | \
             while read -r line; do
               type=$(echo "$line" | yq e '.type')
               path=$(echo "$line" | yq e '.path')
@@ -120,7 +126,7 @@ runs:
                 s3_ls "$path"
               elif [ "$type" == "gs" ]; then
                 gs_ls "$path"
-              else 
+              else
                 echo "Unsupported storage type: '$type' for bucket '$path'."
                 exit 1
               fi
@@ -128,32 +134,37 @@ runs:
               echo ""
             done
         )
-        
+
         hash=$(echo "${ls_content}" | md5sum | awk '{ print $1 }')
 
-        echo "cache_key=${{ inputs.cache_key_prefix }}$hash" >> $GITHUB_OUTPUT
-    
+        echo "cache_key=$CACHE_KEY_PREFIX$hash" >> "$GITHUB_OUTPUT"
+
     - name: Print resources
       shell: bash
       if: ${{ steps.cache_key.outputs.cache_key != '' }}
       working-directory: ${{ inputs.project_directory }}
+      env:
+        CACHE_KEY: ${{ steps.cache_key.outputs.cache_key }}
+        TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
+        DEST_PATHS: ${{ steps.test_resources.outputs.dest_paths }}
       run: |
-        echo "### Cache key: ${{ steps.cache_key.outputs.cache_key }}"
+        echo "### Cache key: $CACHE_KEY"
         echo
 
         echo "### Contents of 'test_resources':"
         echo
-        echo "${{ steps.test_resources.outputs.test_resources }}"
+        echo "$TEST_RESOURCES"
         echo
 
         echo "### Contents of 'dest_paths':"
         echo
-        echo "${{ steps.test_resources.outputs.dest_paths }}"
+        echo "$DEST_PATHS"
         echo
-    
+
     # initialize cache
     - name: Cache resources
-      uses: actions/cache@v4
+      id: cache
+      uses: actions/cache@v6
       if: ${{ steps.cache_key.outputs.cache_key != '' }}
       with:
         path: ${{ steps.test_resources.outputs.dest_paths }}
@@ -165,6 +176,8 @@ runs:
       shell: bash
       if: ${{ steps.cache_key.outputs.cache_key != '' }}
       working-directory: ${{ inputs.project_directory }}
+      env:
+        TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
       run: |
         function sync_s3() {
           local s3_path="$1"
@@ -179,13 +192,14 @@ runs:
         function sync_gs() {
           local gs_path="$1"
           local dest_path="$2"
-          local orig_setting=`gcloud config get-value auth/disable_credentials`
+          local orig_setting
+          orig_setting=$(gcloud config get-value auth/disable_credentials)
           gcloud config set auth/disable_credentials true
           gcloud storage rsync -r "$gs_path" "$dest_path" --delete-unmatched-destination-objects
-          gcloud config set auth/disable_credentials $orig_setting
+          gcloud config set auth/disable_credentials "$orig_setting"
         }
 
-        echo "${{ steps.test_resources.outputs.test_resources }}" | \
+        echo "$TEST_RESOURCES" | \
           while read -r line; do
             type=$(echo "$line" | yq e '.type')
             path=$(echo "$line" | yq e '.path')
@@ -197,18 +211,20 @@ runs:
               sync_s3 "$path" "$dest"
             elif [ "$type" == "gs" ]; then
               sync_gs "$path" "$dest"
-            else 
+            else
               echo "Unsupported storage type: '$type' for bucket '$path'."
               exit 1
             fi
           done
-        
+
     - name: List resources
       shell: bash
       if: ${{ steps.cache_key.outputs.cache_key != '' }}
       working-directory: ${{ inputs.project_directory }}
+      env:
+        TEST_RESOURCES: ${{ steps.test_resources.outputs.test_resources }}
       run: |
-        echo "${{ steps.test_resources.outputs.test_resources }}" | \
+        echo "$TEST_RESOURCES" | \
           while read -r line; do
             type=$(echo "$line" | yq e '.type')
             path=$(echo "$line" | yq e '.path')
@@ -218,7 +234,7 @@ runs:
             echo "type: $type"
             echo "path: $path"
             echo "dest: $dest"
-            tree $dest -L 3
+            tree "$dest" -L 3
             echo ""
             echo "===================================="
           done

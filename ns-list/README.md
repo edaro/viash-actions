@@ -97,13 +97,13 @@ jobs:
     
     steps:
       - name: Install Viash
-        uses: viash-io/viash-actions/setup@v6
+        uses: edaro/viash-actions/setup@v7
 
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: viash ns list
-        uses: viash-io/viash-actions/ns-list@v6
+        uses: edaro/viash-actions/ns-list@v7
 
       - name: View output
         run: |

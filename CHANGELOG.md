@@ -1,8 +1,47 @@
 # viash-actions unreleased
 
+## Breaking changes
+
+* All actions and reusable workflows now refer to `edaro/viash-actions/...@v7` instead of `viash-io/viash-actions/...@v6` (PR edaro/viash-actions#1).
+
+* `ns-build`, `ns-list`: Run on Node 24 instead of the deprecated Node 20 (PR edaro/viash-actions#1).
+
+* Bump third-party actions to their latest major versions, which run on Node 24 (PR edaro/viash-actions#1):
+  - `actions/checkout@v7`
+  - `actions/cache@v6`, `actions/cache/restore@v6`
+  - `tj-actions/changed-files` v47.0.6, `docker/login-action` v4.8.0, `peaceiris/actions-gh-pages` v4.1.0 and `data-intuitive/reclaim-the-bytes` v2, pinned by commit SHA.
+
+## New functionality
+
+* `project/sync-and-cache`: Add a `cache_hit` output (PR edaro/viash-actions#1).
+
+## Minor changes
+
+* All actions and reusable workflows: Pass expressions to `run:` scripts via `env:` instead of interpolating `${{ ... }}` directly, to prevent script injection (PR edaro/viash-actions#1).
+
+* `.github/workflows/build.yaml`, `.github/workflows/test.yaml`: Add a minimal `permissions:` block (PR edaro/viash-actions#1).
+
+* `project/sync-and-cache-s3`: Emit the deprecation message as a GitHub warning annotation (PR edaro/viash-actions#1).
+
+* Add CI for this repository: `actionlint` for the workflows, `shellcheck` for the scripts in the composite actions, and a workflow that tests `project/sync-and-cache` against fixture projects (PR edaro/viash-actions#1).
+
 ## Bug fixes
 
 * `project/sync-and-cache`: Add `--delete` flag to sync commands so files removed from the remote source are also removed locally (PR #56).
+
+* `project/check-concurrent-pr`: Detect the default branch correctly; `$GITHUB_DEFAULT_BRANCH` is not set by GitHub Actions (PR edaro/viash-actions#1).
+
+* `project/detect-changed-components`: Quote array expansions so that file paths with spaces are matched correctly (PR edaro/viash-actions#1).
+
+* `pro/build-nextflow-params`, `pro/build-nextflow-schemas`, `pro/generate-documentation-qmd`: Use `viash_pro_token` to look up the latest `viash_tools` release; the non-existent input `token` was used before (PR edaro/viash-actions#1).
+
+* `pro/build-nextflow-schemas`: Generate one schema per component again; only the first component's output path was passed to the generator (PR edaro/viash-actions#1).
+
+* `pro/generate-documentation-qmd`: Validate the `write_index` input correctly (PR edaro/viash-actions#1).
+
+* `project/update-docker-engine`: Fix quoting of the apt source line (PR edaro/viash-actions#1).
+
+* Fix the action paths in the README examples, e.g. `project/sync-and-cache` instead of `sync-and-cache` (PR edaro/viash-actions#1).
 
 # viash-actions v6.7.3
 
