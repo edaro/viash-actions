@@ -40,8 +40,8 @@ outputs:
     description: Paths to the synced resources. If no test resources are detected, this will be an empty string.
     value: ${{ steps.test_resources.outputs.dest_paths }}
   cache_hit:
-    description: Whether the cache was restored from an exact match of `cache_key` (`'true'` or `'false'`). Empty if no test resources are detected.
-    value: ${{ steps.cache.outputs.cache-hit }}
+    description: "`'true'` if the cache was restored from an exact match of `cache_key`, `'false'` otherwise."
+    value: ${{ steps.cache.outputs.cache-hit == 'true' }}
 runs:
   using: 'composite'
   steps:
