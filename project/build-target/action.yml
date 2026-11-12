@@ -40,38 +40,41 @@ runs:
       shell: bash
       id: defaults
       working-directory: ${{ inputs.project_directory }}
+      env:
+        VERSION: ${{ inputs.version }}
+        TARGET_BRANCH: ${{ inputs.target_branch }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
       run: |
-        BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///' | sed 's/[^a-zA-Z0-9_]/_/g')
-        VERSION=${{ inputs.version }}
+        BRANCH_NAME=$(echo "$GITHUB_REF" | sed 's/refs\/heads\///' | sed 's/[^a-zA-Z0-9_]/_/g')
         if [ -z "$VERSION" ]; then
           VERSION="${BRANCH_NAME}_build"
         fi
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        
-        TARGET_BRANCH=${{ inputs.target_branch }}
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
         if [ -z "$TARGET_BRANCH" ]; then
           TARGET_BRANCH="${BRANCH_NAME}_build"
         fi
-        echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+        echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
 
         TARGET_DIR=$(yq -r '.target // "target"' _viash.yaml)
-        echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
+        echo "target_dir=$TARGET_DIR" >> "$GITHUB_OUTPUT"
 
-        VIASH_VERSION=`viash -v | grep -oP 'viash \K[0-9.]+'`
-        if [[ -z "${{inputs.image_tag }}" ]]; then
+        VIASH_VERSION=$(viash -v | grep -oP 'viash \K[0-9.]+')
+        if [[ -z "$IMAGE_TAG" ]]; then
           CONFIG_MOD=""
         elif [ "$(printf '%s\n' "0.9.0" "$VIASH_VERSION" | sort -V | head -n1)" == "0.9.0" ]; then
-          CONFIG_MOD='.platforms[.type == "docker"].target_tag := "${{ inputs.image_tag }}"'
+          CONFIG_MOD=".platforms[.type == \"docker\"].target_tag := \"$IMAGE_TAG\""
         else
-          CONFIG_MOD='.engines[.type == "docker"].target_tag := "${{ inputs.image_tag }}"'
+          CONFIG_MOD=".engines[.type == \"docker\"].target_tag := \"$IMAGE_TAG\""
         fi
-        echo "config_mod=$CONFIG_MOD" >> $GITHUB_OUTPUT
+        echo "config_mod=$CONFIG_MOD" >> "$GITHUB_OUTPUT"
 
     - name: Remove target folder from .gitignore
       shell: bash
       working-directory: ${{ inputs.project_directory }}
+      env:
+        TARGET_DIR: ${{ steps.defaults.outputs.target_dir }}
       run: |
-        TARGET_DIR="${{ steps.defaults.outputs.target_dir }}"
         if [ -f .gitignore ]; then
           sed -i "/^\\/*${TARGET_DIR}.*/d" .gitignore
         fi
@@ -83,10 +86,12 @@ runs:
     - name: Set version in _viash.yaml
       shell: bash
       working-directory: ${{ inputs.project_directory }}
+      env:
+        VERSION: ${{ steps.defaults.outputs.version }}
       run: |
-        yq eval '.version = "${{ steps.defaults.outputs.version }}"' -i _viash.yaml
+        yq eval '.version = strenv(VERSION)' -i _viash.yaml
 
-    - uses: viash-io/viash-actions/ns-build@v6
+    - uses: edaro/viash-actions/ns-build@v7
       with:
         parallel: true
         config_mod: ${{ steps.defaults.outputs.config_mod }}
@@ -94,7 +99,7 @@ runs:
 
     - name: Build nextflow schemas
       if: ${{ inputs.viash_pro_token != '' }}
-      uses: viash-io/viash-actions/pro/build-nextflow-params@v6
+      uses: edaro/viash-actions/pro/build-nextflow-params@v7
       with:
         target_dir: ${{ inputs.project_directory }}/${{ steps.defaults.outputs.target_dir }}
         viash_pro_token: ${{ inputs.viash_pro_token }}
@@ -103,7 +108,7 @@ runs:
    
     - name: Build parameter files
       if: ${{ inputs.viash_pro_token != '' }}
-      uses: viash-io/viash-actions/pro/build-nextflow-params@v6
+      uses: edaro/viash-actions/pro/build-nextflow-params@v7
       with:
         target_dir: ${{ inputs.project_directory }}/${{ steps.defaults.outputs.target_dir }}
         viash_pro_token: ${{ inputs.viash_pro_token }}
@@ -113,38 +118,43 @@ runs:
       id: find_docker_executables
       shell: bash
       working-directory: ${{ inputs.project_directory }}
+      env:
+        TARGET_DIR: ${{ steps.defaults.outputs.target_dir }}
       run: |
-        TARGET_DIR="${{ steps.defaults.outputs.target_dir }}"
-
-        BUILT_CONFIGS=`find "$TARGET_DIR" -name .config.vsh.yaml`
+        BUILT_CONFIGS=$(find "$TARGET_DIR" -name .config.vsh.yaml)
 
         OUTPUT="["
 
         for yaml in $BUILT_CONFIGS; do
-          RUNNER=`yq -r ".build_info.runner" $yaml`
-          ENGINE=`yq -r ".build_info.engine // .info.platform" $yaml`
+          RUNNER=$(yq -r ".build_info.runner" "$yaml")
+          ENGINE=$(yq -r ".build_info.engine // .info.platform" "$yaml")
 
           # skip if not an executable or does not use a docker engine
           if [ "$RUNNER" != "executable" ] || [[ "$ENGINE" != *"docker"* ]]; then
             continue
           fi
-          NAME=`yq -r ".name // .functionality.name" $yaml`
-          NAMESPACE=`yq -r '.namespace // .functionality.namespace // ""' $yaml`
+          NAME=$(yq -r ".name // .functionality.name" "$yaml")
+          NAMESPACE=$(yq -r '.namespace // .functionality.namespace // ""' "$yaml")
           if [ -z "$NAMESPACE" ]; then
             FULL_NAME="$NAME"
           else
             FULL_NAME="$NAMESPACE/$NAME"
           fi
-          CONFIG=`yq -r ".build_info.config // .info.config" $yaml`
-          SRC_DIR=`dirname $CONFIG`
-          TARGET_DIR=`dirname $yaml`
-          EXECUTABLE=`yq -r ".build_info.executable // .info.executable" $yaml`
+          # the variables below are read indirectly via ${!key}
+          # shellcheck disable=SC2034
+          CONFIG=$(yq -r ".build_info.config // .info.config" "$yaml")
+          # shellcheck disable=SC2034
+          SRC_DIR=$(dirname "$CONFIG")
+          # shellcheck disable=SC2034
+          TARGET_DIR=$(dirname "$yaml")
+          # shellcheck disable=SC2034
+          EXECUTABLE=$(yq -r ".build_info.executable // .info.executable" "$yaml")
 
           echo "Found Docker executable: $FULL_NAME"
 
           JSON_FIELDS=""
           for key in NAME NAMESPACE RUNNER ENGINE CONFIG EXECUTABLE SRC_DIR TARGET_DIR FULL_NAME; do
-            key_lower=`echo $key | tr '[:upper:]' '[:lower:]'`
+            key_lower=$(echo "$key" | tr '[:upper:]' '[:lower:]')
             JSON_FIELDS="$JSON_FIELDS\"${key_lower}\":\"${!key}\","
           done
 
@@ -153,4 +163,4 @@ runs:
 
         OUTPUT="${OUTPUT%,}]"
 
-        echo "output_matrix=$OUTPUT" >> $GITHUB_OUTPUT
+        echo "output_matrix=$OUTPUT" >> "$GITHUB_OUTPUT"

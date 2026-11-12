@@ -24,16 +24,19 @@ runs:
     - name: Get latest release
       shell: bash
       id: latestrelease
+      env:
+        TOOLS_VERSION: ${{ inputs.tools_version }}
+        VIASH_PRO_TOKEN: ${{ inputs.viash_pro_token }}
       run: |
-        if [ "${{ inputs.tools_version }}" == "latest" ]; then
-          RELEASE_TAG=$(curl -s -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ inputs.token }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/viash-io/viash_tools/releases/latest | jq -r '.tag_name')
+        if [ "$TOOLS_VERSION" == "latest" ]; then
+          RELEASE_TAG=$(curl -s -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $VIASH_PRO_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/viash-io/viash_tools/releases/latest | jq -r '.tag_name')
         else
-          RELEASE_TAG="${{ inputs.tools_version }}"
+          RELEASE_TAG="$TOOLS_VERSION"
         fi
         echo "Using version $RELEASE_TAG"
-        echo "releasetag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+        echo "releasetag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with: 
         repository: viash-io/viash_tools
         token: ${{ inputs.viash_pro_token }}
@@ -43,22 +46,23 @@ runs:
     - name: Determine target directory
       shell: bash
       id: defaults
+      env:
+        TARGET_DIR: ${{ inputs.target_dir }}
       run: |
-        TARGET_DIR=${{ inputs.target_dir }}
-
         if [ -z "$TARGET_DIR" ]; then
           TARGET_DIR=$(yq -r '.target // "target/nextflow"' _viash.yaml)
         fi
 
-        echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
+        echo "target_dir=$TARGET_DIR" >> "$GITHUB_OUTPUT"
 
     - name: 'Generate schemas'
       shell: bash
       id: generate-schemas
+      env:
+        TARGET_DIR: ${{ steps.defaults.outputs.target_dir }}
+        ENABLE_DATASET_INPUT: ${{ inputs.enable_dataset_input }}
       run: |
         command -v viash >/dev/null 2>&1 || { echo >&2 "Viash could not be found."; exit 127; }
-
-        TARGET_DIR="${{ steps.defaults.outputs.target_dir }}"
 
         readarray -d '' BUILT_CONFIGS < <(find "$TARGET_DIR" -name .config.vsh.yaml -print0)
         echo "Detected configs:"
@@ -71,24 +75,28 @@ runs:
           NEXTFLOW_SCHEMAS+=("$dir/nextflow_schema.json") 
         done
 
-        NEXTFLOW_SCHEMAS=$(echo "$BUILT_CONFIGS" | sed 's/.config.vsh.yaml/nextflow_schema.json/g')
         echo "Building Nextflow schema files:"
         printf "%s\n" "${NEXTFLOW_SCHEMAS[@]}"
         echo
 
-        VIASH_VERSION=`viash -v | grep -oP 'viash \K[0-9.]+'`
-        IFS=. read -r major minor patch <<< $VIASH_VERSION
+        extra_args=()
+        if [[ "$ENABLE_DATASET_INPUT" == "true" ]]; then
+          extra_args+=(--enable_dataset_input)
+        fi
+
+        VIASH_VERSION=$(viash -v | grep -oP 'viash \K[0-9.]+')
+        IFS=. read -r major minor _ <<< "$VIASH_VERSION"
         JOINED_CONFIGS=$(IFS=';'; printf '%s' "${BUILT_CONFIGS[*]}")
         JOINED_SCHEMAS=$(IFS=';'; printf '%s' "${NEXTFLOW_SCHEMAS[*]}")
         if (( "$major" > 0 )) || (( "$minor" >= 9 )); then
           viash_tools/target/docker/nextflow/generate_schema_v9/generate_schema_v9 \
           --input "$JOINED_CONFIGS" \
           --output "$JOINED_SCHEMAS" \
-          $([[ "${{ inputs.enable_dataset_input }}" == "true" ]] && echo "--enable_dataset_input") 
+          "${extra_args[@]}"
         else
           viash_tools/target/docker/nextflow/generate_schema/generate_schema \
           --input "$JOINED_CONFIGS" \
           --output "$JOINED_SCHEMAS" \
-          $([[ "${{ inputs.enable_dataset_input }}" == "true" ]] && echo "--enable_dataset_input")
+          "${extra_args[@]}"
         fi
 

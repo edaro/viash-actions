@@ -16,7 +16,12 @@ updates:
           - "*"
 
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # also check the composite actions, not only .github/workflows
+    directories:
+      - "/"
+      - "/setup"
+      - "/project/*"
+      - "/pro/*"
     schedule:
       interval: weekly
     labels:

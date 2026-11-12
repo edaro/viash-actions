@@ -73,6 +73,6 @@ outputs:
   output:
     description: The output of 'viash ns build'.
 runs:
-  using: node20
+  using: node24
   main: index.js
 
