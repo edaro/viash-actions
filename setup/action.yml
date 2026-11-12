@@ -32,31 +32,32 @@ runs:
       id: install-viash 
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        VIASH_VERSION: ${{ inputs.version }}
-        VIASH_INSTALLER: ${{ steps.download-installer.outputs.INSTALLER_PATH }}
+        # don't use VIASH_* names here: viash reads e.g. VIASH_VERSION to pick the version to run
+        INPUT_VERSION: ${{ inputs.version }}
+        INSTALLER_PATH: ${{ steps.download-installer.outputs.INSTALLER_PATH }}
       run: |
         # process parameters
         extra_params=( )
-        if [ -n "$VIASH_VERSION" ]; then
-          extra_params+=( "--tag" "$VIASH_VERSION" )
+        if [ -n "$INPUT_VERSION" ]; then
+          extra_params+=( "--tag" "$INPUT_VERSION" )
         fi
 
-        # set envs
-        export VIASH_DEST="$HOME/.local/bin/viash"
+        # set destination
+        viash_dest="$HOME/.local/bin/viash"
 
         # create dir
-        mkdir -p "$(dirname "$VIASH_DEST")"
+        mkdir -p "$(dirname "$viash_dest")"
 
         # install viash
-        bash "$VIASH_INSTALLER" "${extra_params[@]}" --output "$VIASH_DEST"
+        bash "$INSTALLER_PATH" "${extra_params[@]}" --output "$viash_dest"
 
         # add dir to path
-        dirname "$VIASH_DEST" >> "$GITHUB_PATH"
+        dirname "$viash_dest" >> "$GITHUB_PATH"
 
         # check version
-        viash -v | sed 's#viash #version=#;s# (c).*##' >> "$GITHUB_OUTPUT"
+        "$viash_dest" -v | sed 's#viash #version=#;s# (c).*##' >> "$GITHUB_OUTPUT"
 
         echo "Viash installed successfully!"
 
-        echo "path=$VIASH_DEST" >> "$GITHUB_OUTPUT"
+        echo "path=$viash_dest" >> "$GITHUB_OUTPUT"
       shell: bash

@@ -84,8 +84,8 @@ runs:
           extra_args+=(--enable_dataset_input)
         fi
 
-        VIASH_VERSION=$(viash -v | grep -oP 'viash \K[0-9.]+')
-        IFS=. read -r major minor _ <<< "$VIASH_VERSION"
+        viash_version=$(viash -v | grep -oP 'viash \K[0-9.]+')
+        IFS=. read -r major minor _ <<< "$viash_version"
         JOINED_CONFIGS=$(IFS=';'; printf '%s' "${BUILT_CONFIGS[*]}")
         JOINED_SCHEMAS=$(IFS=';'; printf '%s' "${NEXTFLOW_SCHEMAS[*]}")
         if (( "$major" > 0 )) || (( "$minor" >= 9 )); then
