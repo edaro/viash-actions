@@ -41,31 +41,33 @@ runs:
       shell: bash
       id: detect_changed
       working-directory: ${{ inputs.project_directory }}
+      env:
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
         # if the current branch is the default branch, we don't need to detect changed components
-        if [[ ${{ github.ref }} == 'refs/heads/${{ github.event.repository.default_branch }}' ]]; then
+        if [[ "$GITHUB_REF" == "refs/heads/$DEFAULT_BRANCH" ]]; then
           echo "Current branch is the default branch."
-          echo "detect_changed=false" >> $GITHUB_OUTPUT
+          echo "detect_changed=false" >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        
+
         # if the commit message contains 'ci force', we don't need to detect changed components
-        if [[ ${{ github.event_name }} == 'pull_request' ]]; then
-          head_sha="${{(github.event.pull_request.head.sha)}}"
-          commit_msg=$(git log --format=%B -n 1 $head_sha)
+        if [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+          commit_msg=$(git log --format=%B -n 1 "$PR_HEAD_SHA")
           if [[ $commit_msg == *"ci force"* ]]; then
             echo "PR commit message contains 'ci force'."
-            echo "detect_changed=false" >> $GITHUB_OUTPUT
+            echo "detect_changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
         fi
 
         # if we get here, we do need to detect changed components
-        echo "detect_changed=true" >> $GITHUB_OUTPUT
+        echo "detect_changed=true" >> "$GITHUB_OUTPUT"
 
     - name: Get changed files
       id: changed-files
-      uses: tj-actions/changed-files@v44
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
       if: steps.detect_changed.outputs.detect_changed == 'true'
       with:
         path: ${{ inputs.project_directory }}
@@ -107,14 +109,18 @@ runs:
       id: filter
       shell: bash
       working-directory: ${{ inputs.project_directory }}
+      env:
+        DETECT_CHANGED: ${{ steps.detect_changed.outputs.detect_changed }}
+        INPUT_FILE: ${{ inputs.input_file }}
+        ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
       run: |
         # create output path
-        output_file=$(mktemp $RUNNER_TEMP/viash_ns_changed_files.XXXXXX.json)
+        output_file=$(mktemp "$RUNNER_TEMP/viash_ns_changed_files.XXXXXX.json")
 
-        if [[ "${{steps.detect_changed.outputs.detect_changed}}" == "false" ]]; then
+        if [[ "$DETECT_CHANGED" == "false" ]]; then
           echo "Skip filtering components, returning all components."
-          cp "${{ inputs.input_file }}" "$output_file"
-          echo "output_file=$output_file" >> $GITHUB_OUTPUT
+          cp "$INPUT_FILE" "$output_file"
+          echo "output_file=$output_file" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
@@ -123,20 +129,20 @@ runs:
 
         # The output from changed-files is delimited by ,
         # also remove newline if any
-        IFS=$',' read -a changed_files <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+        IFS=$',' read -r -a changed_files <<< "$ALL_CHANGED_FILES"
 
         # read components as array
-        readarray -t components < <(jq -c '.[]' "${{ inputs.input_file }}")
+        readarray -t components < <(jq -c '.[]' "$INPUT_FILE")
 
         # iterate over the components
         for component in "${components[@]}"; do
           config_path=$(jq -cr '.build_info.config // .info.config' <<< "$component" )
-          config_dir=`dirname "$config_path"`
+          config_dir=$(dirname "$config_path")
           echo "Checking '$config_path'"
 
           # get the components resources
           readarray -t resources < <(
-            jq -cr '
+            jq -cr --arg config_dir "$config_dir" '
             (
               # viash config
               [.build_info.config // (.info.config)] +
@@ -144,7 +150,7 @@ runs:
               [
                 ((.resources // []) + (.test_resources // []))[]
                   | .path
-                  | sub("^(?<match>[^/])"; "'$config_dir'/" + .match)
+                  | sub("^(?<match>[^/])"; $config_dir + "/" + .match)
                   | sub("^/"; "")
               ] +
               # viash < 0.9 resources
@@ -156,7 +162,7 @@ runs:
             )[]
             ' <<< "$component"
           )
-          
+
           # check if resource is in the list of changed resources
           should_add_component=0
           for resource in "${resources[@]}"; do
@@ -172,13 +178,13 @@ runs:
             if [ -d "$resource_real_path" ]; then
               echo "Resource is a directory"
               files_from_directories=()
-              readarray -d '' files_from_directories < <(find $resource_real_path -type f -print0)
-              resource_arr+=(${files_from_directories[@]})
+              readarray -d '' files_from_directories < <(find "$resource_real_path" -type f -print0)
+              resource_arr+=("${files_from_directories[@]}")
             fi
-            echo "All resources including files from directories: ${resource_arr[@]}"
-            for changed_file in ${changed_files[@]}; do
+            echo "All resources including files from directories: ${resource_arr[*]}"
+            for changed_file in "${changed_files[@]}"; do
               changed_file_real_path="$(pwd)/${changed_file}"
-              for resource_to_check in ${resource_arr[@]}; do
+              for resource_to_check in "${resource_arr[@]}"; do
                 if [ "$changed_file_real_path" = "$resource_to_check" ]; then
                   echo "Detected changed component!"
                   should_add_component=1
@@ -188,17 +194,19 @@ runs:
             done
           done
           if [[ "$should_add_component" -eq 1 ]]; then
-            output_array+="$component"
+            output_array+=("$component")
           fi
         done
 
         # reformat as json and write to file
         jq -cs '.' <<< "${output_array[*]}" > "$output_file"
-        echo "output_file=$output_file" >> $GITHUB_OUTPUT
+        echo "output_file=$output_file" >> "$GITHUB_OUTPUT"
 
     - id: set_matrix
       shell: bash
       working-directory: ${{ inputs.project_directory }}
+      env:
+        FILTERED_FILE: ${{ steps.filter.outputs.output_file }}
       run: |
         matrix=$(
           jq -c '[ .[] | 
@@ -210,6 +218,6 @@ runs:
               "main_script_type": (.resources // .functionality.resources)[0].type
             } |
             .full_name = if .namespace == "" then .name else .namespace + "/" + .name end
-          ]' "${{steps.filter.outputs.output_file }}"
+          ]' "$FILTERED_FILE"
         )
-        echo "matrix=$matrix" >> $GITHUB_OUTPUT
+        echo "matrix=$matrix" >> "$GITHUB_OUTPUT"

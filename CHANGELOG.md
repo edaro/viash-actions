@@ -1,8 +1,43 @@
 # viash-actions unreleased
 
+## New functionality
+
+* `project/sync-and-cache`: Add a `cache_hit` output (PR #57).
+
+## Minor changes
+
+* `ns-build`, `ns-list`: Run on Node 24 instead of the deprecated Node 20 (PR #57).
+
+* Bump third-party actions to their latest major versions, which run on Node 24 (PR #57):
+  - `actions/checkout@v7`
+  - `actions/cache@v6`, `actions/cache/restore@v6`
+  - `tj-actions/changed-files` v47.0.6, `docker/login-action` v4.8.0, `peaceiris/actions-gh-pages` v4.1.0 and `data-intuitive/reclaim-the-bytes` v2, pinned by commit SHA.
+
+* All actions and reusable workflows: Pass expressions to `run:` scripts via `env:` instead of interpolating `${{ ... }}` directly, to prevent script injection (PR #57).
+
+* `.github/workflows/build.yaml`, `.github/workflows/test.yaml`: Add a minimal `permissions:` block (PR #57).
+
+* `project/sync-and-cache-s3`: Emit the deprecation message as a GitHub warning annotation (PR #57).
+
+* Add CI for this repository: `actionlint` for the workflows, `shellcheck` for the scripts in the composite actions, and workflows that test `setup` (with and without a `version` input) and `project/sync-and-cache` (against fixture projects) (PR #57).
+
 ## Bug fixes
 
 * `project/sync-and-cache`: Add `--delete` flag to sync commands so files removed from the remote source are also removed locally (PR #56).
+
+* `project/check-concurrent-pr`: Detect the default branch correctly; `$GITHUB_DEFAULT_BRANCH` is not set by GitHub Actions (PR #57).
+
+* `project/detect-changed-components`: Quote array expansions so that file paths with spaces are matched correctly (PR #57).
+
+* `pro/build-nextflow-params`, `pro/build-nextflow-schemas`, `pro/generate-documentation-qmd`: Use `viash_pro_token` to look up the latest `viash_tools` release; the non-existent input `token` was used before (PR #57).
+
+* `pro/build-nextflow-schemas`: Generate one schema per component again; only the first component's output path was passed to the generator (PR #57).
+
+* `pro/generate-documentation-qmd`: Validate the `write_index` input correctly (PR #57).
+
+* `project/update-docker-engine`: Fix quoting of the apt source line (PR #57).
+
+* Fix the action paths in the README examples, e.g. `project/sync-and-cache` instead of `sync-and-cache` (PR #57).
 
 # viash-actions v6.7.3
 

@@ -69,53 +69,68 @@ runs:
     - name: Get latest release
       shell: bash
       id: latestrelease
+      env:
+        TOOLS_VERSION: ${{ inputs.tools_version }}
+        VIASH_PRO_TOKEN: ${{ inputs.viash_pro_token }}
       run: |
-        if [ "${{ inputs.tools_version }}" == "latest" ]; then
-          RELEASE_TAG=$(curl -s -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ inputs.token }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/viash-io/viash_tools/releases/latest | jq -r '.tag_name')
+        if [ "$TOOLS_VERSION" == "latest" ]; then
+          RELEASE_TAG=$(curl -s -L -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $VIASH_PRO_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/viash-io/viash_tools/releases/latest | jq -r '.tag_name')
         else
-          RELEASE_TAG="${{ inputs.tools_version }}"
+          RELEASE_TAG="$TOOLS_VERSION"
         fi
         echo "Using version $RELEASE_TAG"
-        echo "releasetag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+        echo "releasetag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
     # The checkout action does not allow checking out a repo outside $GITHUB_WORKSPACE
     - name: 'Checkout viash_tools'
       shell: bash
+      env:
+        VIASH_PRO_TOKEN: ${{ inputs.viash_pro_token }}
+        RELEASE_TAG: ${{ steps.latestrelease.outputs.releasetag }}
       run: |
-        git clone https://${{ inputs.viash_pro_token }}@github.com/viash-io/viash_tools.git "$RUNNER_TEMP/viash_tools" -b ${{ steps.latestrelease.outputs.releasetag }}
+        git clone "https://${VIASH_PRO_TOKEN}@github.com/viash-io/viash_tools.git" "$RUNNER_TEMP/viash_tools" -b "$RELEASE_TAG"
     - name: 'Generate quarto markdown files.'
       shell: bash
       id: generate-schemas
       working-directory: ${{ inputs.project_directory }}
+      env:
+        WRITE_INDEX: ${{ inputs.write_index }}
+        COMPONENT_TEMPLATE: ${{ inputs.component_template }}
+        DEST_PATH: ${{ inputs.dest_path }}
+        QUERY: ${{ inputs.query }}
+        CLEAN: ${{ inputs.clean }}
+        OUTPUT_DIR: ${{ inputs.output_dir }}
+        REPOSITORY: ${{ inputs.repository }}
+        REF: ${{ inputs.ref }}
       run: |
-        if [ "${{ contains(fromJSON('[true, false]'), inputs.write_index) }}" == "true" ]; then
+        if [[ "$WRITE_INDEX" != "true" && "$WRITE_INDEX" != "false" ]]; then
           echo "The value passed with the write_index property must be either 'true' or 'false'."
           exit 1
         fi
 
         extra_args=( )
-        if [ ! -z "${{ inputs.component_template }}" ]; then
-          extra_args+=(--template "${{ inputs.component_template }}")
+        if [ -n "$COMPONENT_TEMPLATE" ]; then
+          extra_args+=(--template "$COMPONENT_TEMPLATE")
         fi
 
-        if [ ! -z "${{ inputs.dest_path }}" ]; then
-          extra_args+=(--dest_path "${{ inputs.dest_path }}")
+        if [ -n "$DEST_PATH" ]; then
+          extra_args+=(--dest_path "$DEST_PATH")
         fi
 
-        if [ ! -z "${{ inputs.query }}" ]; then
-          extra_args+=(--query "${{ inputs.query }}")
+        if [ -n "$QUERY" ]; then
+          extra_args+=(--query "$QUERY")
         fi
 
-        if [ "${{ inputs.clean }}" == "true" ]; then
+        if [ "$CLEAN" == "true" ]; then
           extra_args+=("--clean")
         fi
 
-        $RUNNER_TEMP/viash_tools/target/docker/quarto/generate_documentation_qmd/generate_documentation_qmd \
+        "$RUNNER_TEMP/viash_tools/target/docker/quarto/generate_documentation_qmd/generate_documentation_qmd" \
           --input "./" "${extra_args[@]}" \
-          --output "${{ inputs.output_dir }}" \
-          --git_repo "${{ inputs.repository }}" \
-          --git_browse_url "https://github.com/${{ inputs.repository }}/blob/${{ inputs.ref }}/" \
-          --git_tag "${{ inputs.ref }}" \
-          --write_index "${{ inputs.write_index }}"
+          --output "$OUTPUT_DIR" \
+          --git_repo "$REPOSITORY" \
+          --git_browse_url "https://github.com/$REPOSITORY/blob/$REF/" \
+          --git_tag "$REF" \
+          --write_index "$WRITE_INDEX"
     - name: 'Cleanup checkout'
       shell: bash
       run: |

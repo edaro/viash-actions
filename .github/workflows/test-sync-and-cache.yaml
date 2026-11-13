@@ -1,0 +1,141 @@
+name: Test sync-and-cache
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # a cache key prefix that is unique per workflow run, so that the 'cold' job
+  # always syncs from scratch and the 'warm' job must hit the cache it created
+  CACHE_KEY_PREFIX: fixture__${{ github.run_id }}__${{ github.run_attempt }}__
+
+jobs:
+  cold:
+    name: Sync (${{ matrix.fixture }}, cold cache)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [s3]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync and cache
+        id: sync
+        uses: ./project/sync-and-cache
+        with:
+          project_directory: .github/fixtures/${{ matrix.fixture }}
+          cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__
+
+      - name: Check outputs
+        env:
+          CACHE_KEY: ${{ steps.sync.outputs.cache_key }}
+          CACHE_HIT: ${{ steps.sync.outputs.cache_hit }}
+          DEST_PATHS: ${{ steps.sync.outputs.dest_paths }}
+        run: |
+          echo "cache_key: $CACHE_KEY"
+          echo "cache_hit: $CACHE_HIT"
+          echo "dest_paths: $DEST_PATHS"
+          [[ "$CACHE_KEY" == "$CACHE_KEY_PREFIX"* ]] || { echo "unexpected cache key"; exit 1; }
+          [ "$CACHE_HIT" == "false" ] || { echo "expected a cache miss"; exit 1; }
+          [ -n "$DEST_PATHS" ] || { echo "expected dest_paths"; exit 1; }
+
+      - name: Check synced files
+        env:
+          FIXTURE_DIR: .github/fixtures/${{ matrix.fixture }}
+        run: .github/scripts/check-fixture.sh "$FIXTURE_DIR"
+
+  warm:
+    name: Sync (${{ matrix.fixture }}, warm cache)
+    needs: cold
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [s3]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync and cache
+        id: sync
+        uses: ./project/sync-and-cache
+        with:
+          project_directory: .github/fixtures/${{ matrix.fixture }}
+          cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__
+
+      - name: Check cache hit
+        env:
+          CACHE_HIT: ${{ steps.sync.outputs.cache_hit }}
+        run: |
+          [ "$CACHE_HIT" == "true" ] || { echo "expected a cache hit, got '$CACHE_HIT'"; exit 1; }
+
+      - name: Check restored files
+        env:
+          FIXTURE_DIR: .github/fixtures/${{ matrix.fixture }}
+        run: .github/scripts/check-fixture.sh "$FIXTURE_DIR"
+
+      # simulate stale local content, e.g. from a cache restored via the prefix
+      - name: Add stray files to directories and corrupt single files
+        working-directory: .github/fixtures/${{ matrix.fixture }}
+        run: |
+          yq e '.info.test_resources[].dest' _viash.yaml | while IFS= read -r dest; do
+            if [ -d "$dest" ]; then
+              mkdir -p "$dest/stray_dir"
+              echo "stray" > "$dest/stray_file.txt"
+              echo "stray" > "$dest/stray_dir/stray_file.txt"
+            else
+              echo "corrupted" > "$dest"
+            fi
+          done
+
+      # use a new cache key prefix to force a cache miss on top of the stale content
+      - name: Sync again
+        id: resync
+        uses: ./project/sync-and-cache
+        with:
+          project_directory: .github/fixtures/${{ matrix.fixture }}
+          cache_key_prefix: ${{ env.CACHE_KEY_PREFIX }}${{ matrix.fixture }}__resync__
+
+      - name: Check that stale content was fixed
+        env:
+          FIXTURE_DIR: .github/fixtures/${{ matrix.fixture }}
+          CACHE_HIT: ${{ steps.resync.outputs.cache_hit }}
+        run: |
+          [ "$CACHE_HIT" == "false" ] || { echo "expected a cache miss, got '$CACHE_HIT'"; exit 1; }
+          .github/scripts/check-fixture.sh "$FIXTURE_DIR"
+
+  s3-cache-key-compat:
+    name: s3 cache key unchanged since v6
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Copy fixture
+        run: cp -r .github/fixtures/s3 fixture_s3_v6
+
+      # last commit before this repository was modernised
+      - name: Sync and cache (v6)
+        id: v6
+        uses: viash-io/viash-actions/project/sync-and-cache@74c25172a97818ebc72ea007bb123d462085fe7d
+        with:
+          project_directory: fixture_s3_v6
+
+      - name: Sync and cache (current)
+        id: current
+        uses: ./project/sync-and-cache
+        with:
+          project_directory: .github/fixtures/s3
+
+      - name: Compare cache keys
+        env:
+          KEY_V6: ${{ steps.v6.outputs.cache_key }}
+          KEY_CURRENT: ${{ steps.current.outputs.cache_key }}
+        run: |
+          echo "v6:      $KEY_V6"
+          echo "current: $KEY_CURRENT"
+          [ -n "$KEY_V6" ] && [ "$KEY_V6" == "$KEY_CURRENT" ]

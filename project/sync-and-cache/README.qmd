@@ -55,9 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: `r action$name`
-        uses: viash-io/viash-actions/sync-and-cache
+        uses: viash-io/viash-actions/project/sync-and-cache@v6
 ```
 

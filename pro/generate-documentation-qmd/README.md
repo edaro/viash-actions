@@ -69,12 +69,12 @@ jobs:
       uses: viash-io/viash-actions/setup@v6
 
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
       with:
         path: project
 
     - name: Build quarto markdown documentation files for Viash components
-      uses: viash-io/viash-actions/generate-documentation-qmd@v6
+      uses: viash-io/viash-actions/pro/generate-documentation-qmd@v6
       with:
         project_dir: project
         src: src

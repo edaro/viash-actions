@@ -24,27 +24,30 @@ runs:
     - name: "Warning: deprecated!"
       shell: bash
       run: |
-        echo "This action will be deprecated in viash-actions@v7. Please use 'viash-io/viash-actions/project/sync-and-cache' instead."
+        echo "::warning::This action is deprecated. Please use 'viash-io/viash-actions/project/sync-and-cache' instead."
 
     # create cache_hash key
     - name: Create hash key
       shell: bash
       id: cache_hash
+      env:
+        S3_BUCKET: ${{ inputs.s3_bucket }}
+        CACHE_KEY_PREFIX: ${{ inputs.cache_key_prefix }}
       run: |
         hash=$(
           AWS_EC2_METADATA_DISABLED=true \
             aws s3 ls \
-            ${{ inputs.s3_bucket }} \
+            "$S3_BUCKET" \
             --recursive \
             --no-sign-request | \
             md5sum | \
             awk '{ print $1 }'
         )
-        echo "cache_hash=${{ inputs.cache_key_prefix}}$hash" >> $GITHUB_OUTPUT
-    
+        echo "cache_hash=$CACHE_KEY_PREFIX$hash" >> "$GITHUB_OUTPUT"
+
     # initialize cache
     - name: Cache resources
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ inputs.dest_path }}
         key: ${{ steps.cache_hash.outputs.cache_hash }}
@@ -53,13 +56,18 @@ runs:
     # sync if need be
     - name: Sync resources
       shell: bash
+      env:
+        S3_BUCKET: ${{ inputs.s3_bucket }}
+        DEST_PATH: ${{ inputs.dest_path }}
       run: |
         AWS_EC2_METADATA_DISABLED=true \
           aws s3 sync \
-          ${{ inputs.s3_bucket }} \
-          ${{ inputs.dest_path }} \
+          "$S3_BUCKET" \
+          "$DEST_PATH" \
           --delete --no-sign-request
     - name: List resources
       shell: bash
+      env:
+        DEST_PATH: ${{ inputs.dest_path }}
       run: |
-        tree ${{ inputs.dest_path }} -L 3
+        tree "$DEST_PATH" -L 3

@@ -1,0 +1,54 @@
+name: Test setup
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PINNED_VERSION: 0.9.6
+
+jobs:
+  latest:
+    name: Setup (no version)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Viash
+        id: setup
+        uses: ./setup
+
+      - name: Check Viash
+        env:
+          OUTPUT_VERSION: ${{ steps.setup.outputs.version }}
+          OUTPUT_PATH: ${{ steps.setup.outputs.path }}
+        run: |
+          viash -v
+          [ -n "$OUTPUT_VERSION" ] || { echo "output 'version' is empty"; exit 1; }
+          [ "$(command -v viash)" == "$OUTPUT_PATH" ] || { echo "viash on PATH is not '$OUTPUT_PATH'"; exit 1; }
+          viash -v | grep -qF "viash $OUTPUT_VERSION " || { echo "viash -v does not report '$OUTPUT_VERSION'"; exit 1; }
+
+  pinned:
+    name: Setup (pinned version)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Viash
+        id: setup
+        uses: ./setup
+        with:
+          version: ${{ env.PINNED_VERSION }}
+
+      - name: Check Viash
+        env:
+          OUTPUT_VERSION: ${{ steps.setup.outputs.version }}
+        run: |
+          viash -v
+          [ "$OUTPUT_VERSION" == "$PINNED_VERSION" ] || { echo "expected version '$PINNED_VERSION', got '$OUTPUT_VERSION'"; exit 1; }
+          viash -v | grep -qF "viash $PINNED_VERSION " || { echo "viash -v does not report '$PINNED_VERSION'"; exit 1; }

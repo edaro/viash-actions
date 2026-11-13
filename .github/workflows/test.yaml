@@ -29,6 +29,9 @@ on:
         required: false
         default: "14gb"
 
+permissions:
+  contents: read
+
 jobs:
 
   # phase 1
@@ -42,7 +45,7 @@ jobs:
       dest_paths: ${{ steps.cache.outputs.dest_paths }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: 'recursive'
@@ -70,9 +73,11 @@ jobs:
     - name: Filter out Nextflow scripts (testing currently not supported)
       id: ns_list_filter_nextflow
       working-directory: ${{ inputs.project_directory }}
+      env:
+        INPUT_MATRIX: ${{ steps.ns_list_filter_changed.outputs.output_matrix }}
       run: |
-        OUTPUT_MATRIX=$(echo '${{ steps.ns_list_filter_changed.outputs.output_matrix }}' | jq -c 'map(select(.main_script_type != "nextflow_script"))')
-        echo "output_matrix=$OUTPUT_MATRIX" >> $GITHUB_OUTPUT
+        OUTPUT_MATRIX=$(jq -c 'map(select(.main_script_type != "nextflow_script"))' <<< "$INPUT_MATRIX")
+        echo "output_matrix=$OUTPUT_MATRIX" >> "$GITHUB_OUTPUT"
 
   # phase 2
   test:
@@ -89,21 +94,21 @@ jobs:
     steps:
     # Remove unnecessary files to free up space. Otherwise, we get 'no space left on device.'
     - name: Clear space
-      uses: data-intuitive/reclaim-the-bytes@v2
-    
+      uses: data-intuitive/reclaim-the-bytes@de3545faa05cdef558704bfdcc87dff9f28d1f2a # v2
+
     - name: Check out repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: 'recursive'
         fetch-depth: 0
-        
+
     - name: Install Viash
       uses: viash-io/viash-actions/setup@v6
 
     # use cache
     - name: Cache resources data
       if: ${{ needs.list.outputs.cache_key != '' }}
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       timeout-minutes: 10
       with:
         path: ${{ needs.list.outputs.dest_paths }}
@@ -113,9 +118,12 @@ jobs:
       timeout-minutes: ${{ inputs.timeout }}
       env:
         RUNNER_TEMP: "${{ runner.temp }}/viash_temp"
+        COMPONENT_CONFIG: ${{ matrix.component.config }}
+        NUM_CPUS: ${{ inputs.num_cpus }}
+        MEMORY: ${{ inputs.memory }}
       working-directory: ${{ inputs.project_directory }}
       run: |
         viash test \
-          "${{ matrix.component.config }}" \
-          --cpus ${{ inputs.num_cpus }} \
-          --memory ${{ inputs.memory }}
+          "$COMPONENT_CONFIG" \
+          --cpus "$NUM_CPUS" \
+          --memory "$MEMORY"
