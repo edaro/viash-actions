@@ -48,7 +48,7 @@ jobs:
 
       - name: Build target directory
         id: build_target
-        uses: viash-io/viash-actions/build-target@v6
+        uses: viash-io/viash-actions/project/build-target@v6
 
       - name: Check output
         run: |

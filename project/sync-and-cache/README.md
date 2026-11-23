@@ -64,5 +64,5 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Sync and cache test resources specified by the project config
-        uses: viash-io/viash-actions/sync-and-cache
+        uses: viash-io/viash-actions/project/sync-and-cache@v6
 ```
