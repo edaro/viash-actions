@@ -49,3 +49,4 @@ runs:
         fi
       env:
         GH_TOKEN: ${{ inputs.github_token }}
+        GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
