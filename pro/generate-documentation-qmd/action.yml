@@ -86,8 +86,10 @@ runs:
       shell: bash
       id: generate-schemas
       working-directory: ${{ inputs.project_directory }}
+      env:
+        WRITE_INDEX: ${{ inputs.write_index }}
       run: |
-        if [ "${{ contains(fromJSON('[true, false]'), inputs.write_index) }}" == "true" ]; then
+        if [[ "$WRITE_INDEX" != "true" && "$WRITE_INDEX" != "false" ]]; then
           echo "The value passed with the write_index property must be either 'true' or 'false'."
           exit 1
         fi
