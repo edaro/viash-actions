@@ -86,6 +86,6 @@ outputs:
     description: A simplified version of the output, which is a list of components
       with fields 'name', 'namespace', 'full_name', 'config', and 'dir'.
 runs:
-  using: node20
+  using: node24
   main: index.js
 
