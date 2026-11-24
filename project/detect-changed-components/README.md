@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - id: ns_list
         uses: viash-io/viash-actions/ns-list@v6

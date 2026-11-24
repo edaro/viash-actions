@@ -37,7 +37,7 @@ jobs:
       uses: viash-io/viash-actions/setup@v6
 
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
 
     - name: Build parameter yaml examples for Viash components
       uses: viash-io/viash-actions/pro/build-nextflow-params@v6

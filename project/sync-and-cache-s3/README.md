@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Sync and cache an S3 bucket
         uses: viash-io/viash-actions/project/sync-and-cache-s3@v6
