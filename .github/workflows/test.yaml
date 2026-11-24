@@ -29,6 +29,9 @@ on:
         required: false
         default: "14gb"
 
+permissions:
+  contents: read
+
 jobs:
 
   # phase 1

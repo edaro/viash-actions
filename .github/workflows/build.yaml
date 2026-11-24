@@ -30,6 +30,9 @@ on:
           working.
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   # phase 1
   target:
