@@ -153,7 +153,7 @@ runs:
     
     # initialize cache
     - name: Cache resources
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       if: ${{ steps.cache_key.outputs.cache_key != '' }}
       with:
         path: ${{ steps.test_resources.outputs.dest_paths }}

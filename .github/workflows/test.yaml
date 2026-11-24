@@ -89,7 +89,7 @@ jobs:
     steps:
     # Remove unnecessary files to free up space. Otherwise, we get 'no space left on device.'
     - name: Clear space
-      uses: data-intuitive/reclaim-the-bytes@v2
+      uses: data-intuitive/reclaim-the-bytes@de3545faa05cdef558704bfdcc87dff9f28d1f2a # v2
     
     - name: Check out repository
       uses: actions/checkout@v7
