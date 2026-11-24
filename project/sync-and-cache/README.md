@@ -46,6 +46,8 @@ info:
   resources are detected, this will be an empty string.
 - `dest_paths`: Paths to the synced resources. If no test resources are
   detected, this will be an empty string.
+- `cache_hit`: `'true'` if the cache was restored from an exact match of
+  `cache_key`, `'false'` otherwise.
 
 ## Examples
 
