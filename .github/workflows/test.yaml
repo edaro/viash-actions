@@ -42,7 +42,7 @@ jobs:
       dest_paths: ${{ steps.cache.outputs.dest_paths }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
         submodules: 'recursive'
@@ -92,7 +92,7 @@ jobs:
       uses: data-intuitive/reclaim-the-bytes@v2
     
     - name: Check out repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: 'recursive'
         fetch-depth: 0

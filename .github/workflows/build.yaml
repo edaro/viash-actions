@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -111,7 +111,7 @@ jobs:
       # Remove unnecessary files to free up space. Otherwise, we get 'no space left on device.'
       - uses: data-intuitive/reclaim-the-bytes@v2
       
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           ref: ${{ needs.target.outputs.target_branch }}
