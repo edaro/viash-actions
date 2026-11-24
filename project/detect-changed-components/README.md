@@ -64,7 +64,7 @@ jobs:
 
       - name: Detect components with changed files
         id: ns_list_changed
-        uses: viash-io/viash-actions/detect-changed-components@v6
+        uses: viash-io/viash-actions/project/detect-changed-components@v6
         with:
           input_file: ${{ steps.ns_list.outputs.output_file }}
 ```

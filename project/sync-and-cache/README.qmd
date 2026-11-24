@@ -58,6 +58,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: `r action$name`
-        uses: viash-io/viash-actions/sync-and-cache
+        uses: viash-io/viash-actions/project/sync-and-cache@v6
 ```
 

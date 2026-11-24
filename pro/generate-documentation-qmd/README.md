@@ -74,7 +74,7 @@ jobs:
         path: project
 
     - name: Build quarto markdown documentation files for Viash components
-      uses: viash-io/viash-actions/generate-documentation-qmd@v6
+      uses: viash-io/viash-actions/pro/generate-documentation-qmd@v6
       with:
         project_dir: project
         src: src
