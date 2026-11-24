@@ -103,7 +103,7 @@ jobs:
     # use cache
     - name: Cache resources data
       if: ${{ needs.list.outputs.cache_key != '' }}
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       timeout-minutes: 10
       with:
         path: ${{ needs.list.outputs.dest_paths }}
