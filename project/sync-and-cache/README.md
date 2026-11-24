@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Sync and cache test resources specified by the project config
         uses: viash-io/viash-actions/project/sync-and-cache@v6
